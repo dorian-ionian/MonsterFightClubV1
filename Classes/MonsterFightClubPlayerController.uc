@@ -32,7 +32,10 @@ var int CamRigIndex;        // which broadcast rig is live (0 = main, 1 = corner
 var float CutClock;         // time until the next director's cut (8-14s)
 var float BlockedTime;      // how long the current shot has been blocked by geometry
 var float CamOrbitAngle;    // persistent orbit phase - the rigs revolve around the fight
-var float ActionCamZoom;    // action-cam rig distance multiplier (mouse wheel, 0.5-3.0)
+var float ActionCamZoom;    // automatic broadcast zoom (0.5-3.0): pushes in on the
+                            // action over time, drifts back out on the wide shot
+var float ZoomTimer;        // time until the next automatic zoom change
+var float ZoomTarget;       // where the auto-zoom is gliding toward
 var bool bActionCam;        // true = boxing/action camera (rigs), false = stock spectator cam
 
 // Client state pushed from the server via RPCs (independent of GRI
@@ -443,11 +446,9 @@ exec function NextWeapon()
         ZoomPreview(-1);   // wheel up = zoom out (matches freecam)
         return;
     }
-    if (bActionCam)
-    {
-        ZoomActionCam(1);  // wheel up = zoom out (pull the rigs back)
-        return;
-    }
+    // In the action cam the zoom is AUTOMATIC (TV broadcast style) - the
+    // wheel does nothing there. Standard spectator cam falls through to
+    // the stock path (CameraDist).
     Super.NextWeapon();
 }
 
@@ -463,27 +464,7 @@ exec function PrevWeapon()
         ZoomPreview(1);   // wheel down = zoom in (matches freecam)
         return;
     }
-    if (bActionCam)
-    {
-        ZoomActionCam(-1);  // wheel down = zoom in (push the rigs in)
-        return;
-    }
     Super.PrevWeapon();
-}
-
-// Wheel zoom for the action-cam broadcast rigs. The rig radius is scaled
-// so the camera dollies toward/away from the fighters - the custom camera
-// sets its own location every frame, so the stock CameraDist zoom would do
-// nothing here. Multiplicative (1.1 per notch) so the steps feel uniform
-// at every distance. Clamped 0.5x-3.0x of the default 320-unit radius.
-simulated function ZoomActionCam(int Dir)
-{
-    if (Dir > 0)
-        ActionCamZoom = FClamp(ActionCamZoom * 1.1, 0.5, 3.0);
-    else
-        ActionCamZoom = FClamp(ActionCamZoom * 0.9, 0.5, 3.0);
-    if (bLogInput)
-        log("MFC-INPUT: action cam zoom -> " $ ActionCamZoom, 'MonsterFightClubV1');
 }
 
 // True while the betting window is open (either the pushed client state
@@ -675,6 +656,13 @@ simulated function TrackFighters(float DeltaTime)
     // broadcast cameraman. Smooth and constant, no jumps.
     CamOrbitAngle += DeltaTime * 0.15;
 
+    // --- AUTOMATIC TV zoom: the director pushes in on the action over
+    // time, then pulls back out for the wide shot. Like a real broadcast:
+    // every few seconds it eases toward a new target between the tight
+    // (0.6x) and wide (1.8x) framing, so the shot is always gently moving.
+    // Wheel input no longer drives this - it's fully self-directed.
+    UpdateAutoZoom(DeltaTime);
+
     if (bCutPending)
     {
         // Hard TV cut: snap instantly to the new rig's position.
@@ -714,11 +702,37 @@ simulated function vector GetRigPosition(vector Mid)
     }
 
     Loc = Mid;
-    // ActionCamZoom dollies the rigs in/out on the fighters (mouse wheel).
+    // ActionCamZoom dollies the rigs in/out on the fighters automatically.
     Loc.X += 320 * ActionCamZoom * Cos(RigAngle);
     Loc.Y += 320 * ActionCamZoom * Sin(RigAngle);
     Loc.Z += 70;   // same height as the aim - perfectly parallel view
     return Loc;
+}
+
+// Self-driving broadcast zoom: glides ActionCamZoom toward ZoomTarget, and
+// when it arrives (or after a while) picks a NEW target - a slow push-in
+// for drama, or a pull-back to the wide shot. Keeps the fight framing
+// alive like a real TV director.
+simulated function UpdateAutoZoom(float DeltaTime)
+{
+    // glide toward the target
+    ActionCamZoom += (ZoomTarget - ActionCamZoom) * FMin(1.0, 0.6 * DeltaTime);
+
+    ZoomTimer -= DeltaTime;
+    if (ZoomTimer <= 0 || Abs(ActionCamZoom - ZoomTarget) < 0.02)
+    {
+        // pick a fresh target: mostly push IN for tension, sometimes out
+        if (FRand() < 0.65)
+        {
+            ZoomTarget = 0.6 + FRand() * 0.4;      // tight: 0.6-1.0
+            ZoomTimer = 4.0 + FRand() * 5.0;        // hold ~4-9s
+        }
+        else
+        {
+            ZoomTarget = 1.2 + FRand() * 0.6;       // wide: 1.2-1.8
+            ZoomTimer = 3.0 + FRand() * 4.0;        // hold ~3-7s
+        }
+    }
 }
 
 // Compute the fight midpoint to track: the smoothed center of the two
@@ -784,7 +798,9 @@ defaultproperties
      CamRigIndex=0
      CutClock=8.000000
      bActionCam=False
-     ActionCamZoom=1.000000
+     ActionCamZoom=1.200000
+     ZoomTarget=1.200000
+     ZoomTimer=4.000000
      PreviewZoom=1.000000
      bLogCamera=False
      bLogInput=False
