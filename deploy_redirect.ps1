@@ -18,6 +18,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Package,
     [string]$Ext = "u",            # u (script) or uax (sound) package extension
+    [string]$SourceDir = "",       # folder containing the package file (default: this script's folder)
     [string]$HostAddr = "",
     [string]$User = "",
     [string]$Pass = "",
@@ -27,8 +28,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SystemDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$SrcFile = Join-Path $SystemDir "$Package.$Ext"
-$Uz2File = Join-Path $SystemDir "$Package.$Ext.uz2"
+if($SourceDir -eq "")
+{
+    $SourceDir = $SystemDir
+}
+$SrcFile = Join-Path $SourceDir "$Package.$Ext"
+$Uz2File = Join-Path $SourceDir "$Package.$Ext.uz2"
 
 #--- 1. Compress with ucc (skips if the .uz2 is newer than the source) ---
 if(Test-Path $SrcFile)
@@ -37,17 +42,36 @@ if(Test-Path $SrcFile)
     $zTime = if(Test-Path $Uz2File) { (Get-Item $Uz2File).LastWriteTime } else { [datetime]::MinValue }
     if($zTime -lt $uTime)
     {
-        Write-Host "Compressing $Package.$Ext -> $Package.$Ext.uz2 ..."
-        & cmd /c "ucc.exe compress $Package.$Ext" | Out-Null
+        Write-Host "Compressing $SrcFile -> $($Package).$Ext.uz2 ..."
+        # ucc resolves relative paths from its working dir (System), so pass
+        # a path relative to System when the source lives elsewhere.
+        $RelSrc = $SrcFile
+        if($SourceDir -ne $SystemDir)
+        {
+            # Manual relative path (Path.GetRelativePath needs .NET Core).
+            # Walk up from SystemDir to the common root, then down to the
+            # source file. e.g. System\ -> ..\Mods\System\X.u
+            $sParts = $SystemDir.TrimEnd('\').Split('\')
+            $fParts = $SrcFile.TrimEnd('\').Split('\')
+            $common = 0
+            while($common -lt $sParts.Length -and $common -lt $fParts.Length -and
+                  $sParts[$common] -eq $fParts[$common])
+            {
+                $common++
+            }
+            $RelSrc = ("..\" * ($sParts.Length - $common)) +
+                      (($fParts[$common..($fParts.Length-1)] -join '\'))
+        }
+        & cmd /c "ucc.exe compress $RelSrc" | Out-Null
         if(-not (Test-Path $Uz2File))
         {
-            Write-Error "ucc compress failed - no $Package.$Ext.uz2 produced"
+            Write-Error "ucc compress failed - no $($Package).$Ext.uz2 produced"
             exit 1
         }
     }
     else
     {
-        Write-Host "Skipping compress - $Package.$Ext.uz2 is already up to date"
+        Write-Host "Skipping compress - $($Package).$Ext.uz2 is already up to date"
     }
 }
 else
