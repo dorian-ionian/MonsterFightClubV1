@@ -804,6 +804,17 @@ function PickTwoFighters()
         {
             ALoaded = ChampionClass;
             AName = ChampionName;
+            // Find the champion's TABLE ROW so the challenger pick below
+            // can avoid booking the champion itself as fighter B (and so
+            // the i == a guard works in gauntlet mode - it never did,
+            // because a stayed 0 for the locked-in champion).
+            a = -1;
+            for (i = 0; i < Idx.Length; i++)
+                if (class'MonsterFightClubMonsters'.default.MonsterTable[Idx[i]].MonsterClassName ~= string(ChampionClass))
+                {
+                    a = Idx[i];
+                    break;
+                }
         }
     }
     if (ALoaded == None)
@@ -832,6 +843,14 @@ function PickTwoFighters()
             continue;
         if (i == a && Idx.Length > 1)
             continue;   // avoid booking the exact same table entry twice
+        // Don't immediately rematch the PREVIOUS matchup (either order) -
+        // the audience reads a same-pair fight as a bug. FighterAClass /
+        // FighterBClass still hold the last pair here. First 20 tries
+        // avoid it; after that anything goes (tiny rosters can't always).
+        if (tries < 20
+            && ((ALoaded == FighterAClass && BLoaded == FighterBClass)
+             || (ALoaded == FighterBClass && BLoaded == FighterAClass)))
+            continue;
         b = i;
     }
 
@@ -1905,6 +1924,7 @@ function BeginIntermission()
 {
     local int Champ;
     local string ChampName;
+    local bool bDefended;
 
     Phase = PHASE_INTERMISSION;
     PhaseClock = 0;
@@ -1917,9 +1937,13 @@ function BeginIntermission()
     ChampName = GetFighterName(Champ);
 
     // Gauntlet mode: the matchup winner becomes the standing champion and
-    // will defend against a new challenger in the next matchup.
+    // will defend against a new challenger in the next matchup. The streak
+    // counts CONSECUTIVE wins by the SAME champion - when a challenger
+    // dethrones the champ, the streak restarts at 1.
     if (bWinnerAdvances)
     {
+        bDefended = (Champ == 1 && ChampionClass == FighterAClass)
+                 || (Champ == 2 && ChampionClass == FighterBClass);
         if (Champ == 1)
         {
             ChampionClass = FighterAClass;
@@ -1930,7 +1954,10 @@ function BeginIntermission()
             ChampionClass = FighterBClass;
             ChampionName = FighterBName;
         }
-        ChampionStreak++;   // won another matchup
+        if (bDefended)
+            ChampionStreak++;   // defended again - streak grows
+        else
+            ChampionStreak = 1; // new champion - streak restarts
         bChampionCrowned = true;
     }
 
