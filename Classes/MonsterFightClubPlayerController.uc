@@ -425,8 +425,10 @@ simulated function HandleMenuKey(byte T)
 }
 
 // Mouse wheel: with the betting menu open it cycles the amount; with the
-// menu CLOSED while the fighter cards are up it zooms the preview models.
-// Everywhere else (fight in progress) it falls through to the stock path.
+// menu CLOSED while the fighter cards are up it zooms the preview models
+// (same direction as the freecam: wheel UP = zoom OUT, wheel DOWN = zoom
+// IN). Everywhere else (fight in progress) it falls through to the stock
+// path, which zooms the spectator camera via CameraDist.
 exec function NextWeapon()
 {
     if (bBetMenuOpen)
@@ -436,7 +438,7 @@ exec function NextWeapon()
     }
     if (IsBettingOpenClient())
     {
-        ZoomPreview(1);
+        ZoomPreview(-1);   // wheel up = zoom out (matches freecam)
         return;
     }
     Super.NextWeapon();
@@ -451,7 +453,7 @@ exec function PrevWeapon()
     }
     if (IsBettingOpenClient())
     {
-        ZoomPreview(-1);
+        ZoomPreview(1);   // wheel down = zoom in (matches freecam)
         return;
     }
     Super.PrevWeapon();
