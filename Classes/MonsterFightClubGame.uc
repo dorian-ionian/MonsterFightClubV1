@@ -12,13 +12,13 @@
 
 // The round-start bell. Imported into this package at build time - ucc make
 // runs this exec before compiling, so the wav must exist when building.
-#exec AUDIO IMPORT NAME="BellSound" FILE="..\MonsterFightClub\Sounds\bell_22050.wav"
+#exec AUDIO IMPORT NAME="BellSound" FILE="..\MonsterFightClubV1\Sounds\bell_22050.wav"
 
 class MonsterFightClubGame extends xDeathMatch
-    config(MonsterFightClub);
+    config(MonsterFightClubV1);
 
 //------------------------------------------------------------------------------
-// Configurable show settings (see System\MonsterFightClub.ini)
+// Configurable show settings (see System\MonsterFightClubV1.ini)
 //------------------------------------------------------------------------------
 var() config int    StartMoney;           // starting bankroll for players and bots (default 100)
 var() config int    MinBet;               // minimum bet (default 20)
@@ -201,7 +201,7 @@ function PostBeginPlay()
     {
         bDriverActive = (Spawn(class'MonsterFightClubDriver') != None);
         if (!bDriverActive)
-            log("MonsterFightClub: could not spawn show driver - falling back to state timer", 'MonsterFightClub');
+            log("MonsterFightClub: could not spawn show driver - falling back to state timer", 'MonsterFightClubV1');
     }
 }
 
@@ -274,7 +274,7 @@ function CheckCurrentMap()
     {
         if (FirstSupportedMap == "")
             FirstSupportedMap = "DM-Deck17";
-        log("MonsterFightClub: map '" $ Cur $ "' is not in the 1-on-1 rotation, switching to '" $ FirstSupportedMap $ "'", 'MonsterFightClub');
+        log("MonsterFightClub: map '" $ Cur $ "' is not in the 1-on-1 rotation, switching to '" $ FirstSupportedMap $ "'", 'MonsterFightClubV1');
         Broadcast(Self, "THIS ARENA ISN'T IN THE 1-ON-1 ROTATION - SWITCHING SHOWS...", 'CriticalEvent');
         bMapSwitchPending = true;
         MapSwitchClock = 5.0;
@@ -351,7 +351,7 @@ event PostLogin(PlayerController NewPlayer)
     PushBettingState();
 
     if (NewPlayer.PlayerReplicationInfo != None)
-        log("MonsterFightClub: " $ NewPlayer.PlayerReplicationInfo.PlayerName $ " is spectating", 'MonsterFightClub');
+        log("MonsterFightClub: " $ NewPlayer.PlayerReplicationInfo.PlayerName $ " is spectating", 'MonsterFightClubV1');
 }
 
 // Stock spectator code keeps re-flagging the audience as spectators, which
@@ -506,7 +506,7 @@ function TrimAudienceBots()
         B = Remove[i];
         if (B == None)
             continue;
-        log("MonsterFightClub: " $ B.PlayerReplicationInfo.PlayerName $ " removed (audience full)", 'MonsterFightClub');
+        log("MonsterFightClub: " $ B.PlayerReplicationInfo.PlayerName $ " removed (audience full)", 'MonsterFightClubV1');
         if (B.PlayerReplicationInfo != None)
             B.PlayerReplicationInfo.Destroy();
         B.Destroy();
@@ -549,7 +549,7 @@ function bool AddBot(optional string botName)
     }
 
     NumBots++;
-    log("MonsterFightClub: " $ botName $ " joined the audience (" $ NumBots $ " bots)", 'MonsterFightClub');
+    log("MonsterFightClub: " $ botName $ " joined the audience (" $ NumBots $ " bots)", 'MonsterFightClubV1');
     return true;
 }
 
@@ -596,7 +596,7 @@ function Material GetRandomPortrait()
 }
 
 // Audience bot name selection: if the admin configured CustomBotNames in
-// MonsterFightClub.ini, pick a RANDOM unused name from the list (so the
+// MonsterFightClubV1.ini, pick a RANDOM unused name from the list (so the
 // same four bots don't always get the same four names in the same order);
 // otherwise fall back to the standard UT2004 bot roster.
 function string GetNextBotName()
@@ -865,9 +865,9 @@ function PickTwoFighters()
     PublishFighterClasses();
 
     if (bWinnerAdvances && ChampionClass != None)
-        log("MonsterFightClub: gauntlet - champion " $ FighterAName $ " defends vs " $ FighterBName, 'MonsterFightClub');
+        log("MonsterFightClub: gauntlet - champion " $ FighterAName $ " defends vs " $ FighterBName, 'MonsterFightClubV1');
     else
-        log("MonsterFightClub: matchup " $ MatchupNumber $ " - " $ FighterAName $ " vs " $ FighterBName, 'MonsterFightClub');
+        log("MonsterFightClub: matchup " $ MatchupNumber $ " - " $ FighterAName $ " vs " $ FighterBName, 'MonsterFightClubV1');
 }
 
 // Send the fighter class paths to every client so the HUD can load the
@@ -1010,7 +1010,7 @@ function ProbeFighterHealths()
                 FCGRI.FighterAHealth = Health;
                 FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
                 log("MFC-PROBE: " $ FighterAClass $ " defaultHealth=" $ FighterAClass.default.Health
-                    $ " probeHealth=" $ Health, 'MonsterFightClub');
+                    $ " probeHealth=" $ Health, 'MonsterFightClubV1');
             }
         }
         if (FighterBClass != None)
@@ -1024,7 +1024,7 @@ function ProbeFighterHealths()
                 FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
                 if (default.bLogProbe)
                     log("MFC-PROBE: " $ FighterBClass $ " defaultHealth=" $ FighterBClass.default.Health
-                        $ " probeHealth=" $ Health, 'MonsterFightClub');            }
+                        $ " probeHealth=" $ Health, 'MonsterFightClubV1');            }
         }
     }
 
@@ -1076,7 +1076,7 @@ function int ProbeWithRetry(class<Monster> MClass, int PreferSpot)
         }
     }
     if (default.bLogProbe)
-        log("MFC-PROBE: " $ MClass $ " could not spawn probe at any spot!", 'MonsterFightClub');
+        log("MFC-PROBE: " $ MClass $ " could not spawn probe at any spot!", 'MonsterFightClubV1');
     return 0;
 }
 
@@ -1139,7 +1139,7 @@ function ReplaceBrokeBots()
         B = Broke[i];
         if (B == None)
             continue;
-        log("MonsterFightClub: " $ B.PlayerReplicationInfo.PlayerName $ " went broke - replaced", 'MonsterFightClub');
+        log("MonsterFightClub: " $ B.PlayerReplicationInfo.PlayerName $ " went broke - replaced", 'MonsterFightClubV1');
         if (B.PlayerReplicationInfo != None)
             B.PlayerReplicationInfo.Destroy();
         B.Destroy();
@@ -1176,7 +1176,7 @@ function AutoReloadBrokeHumans()
             MPRI.bOutOfLives = false;
             MPRI.NetUpdateTime = Level.TimeSeconds - 1;
             MPC.ClientMessage("Fresh $" $ StartMoney $ " - you're back in! Betting is open.");
-            log("MonsterFightClub: " $ MPRI.PlayerName $ " went broke - auto-reloaded $" $ StartMoney, 'MonsterFightClub');
+            log("MonsterFightClub: " $ MPRI.PlayerName $ " went broke - auto-reloaded $" $ StartMoney, 'MonsterFightClubV1');
         }
     }
 }
@@ -1270,7 +1270,7 @@ function SpawnFighters()
     {
         if (!bSpawnPendingRetry)
             Broadcast(Self, "THE ARENA IS BEING PREPARED - PLEASE STAND BY...", 'CriticalEvent');
-        log("MonsterFightClub: could not spawn fighters - will retry", 'MonsterFightClub');
+        log("MonsterFightClub: could not spawn fighters - will retry", 'MonsterFightClubV1');
         bSpawnPendingRetry = true;
         SpawnRetryCount = 0;
         return;
@@ -1284,9 +1284,9 @@ function SpawnFighters()
     if (default.bLogProbe)
     {
         log("MFC-SPAWN: " $ FighterAClass $ " probe=" $ ProbeHealthA $ " real=" $ FighterA.Health
-            $ " classDefault=" $ FighterAClass.default.Health, 'MonsterFightClub');
+            $ " classDefault=" $ FighterAClass.default.Health, 'MonsterFightClubV1');
         log("MFC-SPAWN: " $ FighterBClass $ " probe=" $ ProbeHealthB $ " real=" $ FighterB.Health
-            $ " classDefault=" $ FighterBClass.default.Health, 'MonsterFightClub');
+            $ " classDefault=" $ FighterBClass.default.Health, 'MonsterFightClubV1');
     }
 
     // LEARN the real spawn health so the next booking of this class shows
@@ -1364,7 +1364,7 @@ function Controller SetupFighterController(Monster M, Monster Other)
     if (bSameSpeciesMatchup)
     {
         if (default.bLogDamage)
-            log("MFC-AI: same-species fighter " $ M $ " native controller=" $ M.ControllerClass, 'MonsterFightClub');
+            log("MFC-AI: same-species fighter " $ M $ " native controller=" $ M.ControllerClass, 'MonsterFightClubV1');
         if (M.Controller != None)
             M.Controller.Destroy();
         C = Spawn(class'MonsterFightClubMonsterController');
@@ -1778,7 +1778,7 @@ function int ReduceDamage(int Damage, pawn injured, pawn instigatedBy, vector Hi
     if (bLogDamage && (injured == FighterA || injured == FighterB
         || instigatedBy == FighterA || instigatedBy == FighterB))
         log("MFC-DMG: " $ instigatedBy $ " -> " $ injured
-            $ " dmg=" $ Damage $ " type=" $ DamageType $ " hp=" $ injured.Health, 'MonsterFightClub');
+            $ " dmg=" $ Damage $ " type=" $ DamageType $ " hp=" $ injured.Health, 'MonsterFightClubV1');
 
     if (Monster(instigatedBy) != None && Monster(injured) != None)
     {
@@ -1848,7 +1848,7 @@ function OnMonsterKilled(Controller Killer, Monster Victim)
 
     Broadcast(Self, Caps(GetFighterName(Winner)) $ " DESTROYS " $ Caps(GetFighterName(3 - Winner)) $ "!", 'CriticalEvent');
     Broadcast(Self, "ROUND " $ (RoundNumber - 1) $ " GOES TO " $ Caps(GetFighterName(Winner)) $ " - SCORE " $ RoundWins[0] $ "-" $ RoundWins[1], 'CriticalEvent');
-    log("MonsterFightClub: " $ GetFighterName(Winner) $ " wins round " $ (RoundNumber - 1) $ " (" $ RoundWins[0] $ "-" $ RoundWins[1] $ ")", 'MonsterFightClub');
+    log("MonsterFightClub: " $ GetFighterName(Winner) $ " wins round " $ (RoundNumber - 1) $ " (" $ RoundWins[0] $ "-" $ RoundWins[1] $ ")", 'MonsterFightClubV1');
 }
 
 function RoundTimeout()
@@ -2547,7 +2547,7 @@ function RoundTick()
     CamClock += 1;
     HealthClock += 1;
 
-    // live state telemetry — visible in System\MonsterFightClub.ini
+    // live state telemetry — visible in System\MonsterFightClubV1.ini
     StatusClock += 1;
     if (StatusClock >= 5)
     {
@@ -2696,7 +2696,7 @@ function DebugWrite(string S)
 {
     default.DebugStatus = S;
     StaticSaveConfig();
-    log("MonsterFightClub: " $ S, 'MonsterFightClub');
+    log("MonsterFightClub: " $ S, 'MonsterFightClubV1');
 }
 
 function UpdateGRIHealth()
@@ -2923,7 +2923,7 @@ function EndGame(PlayerReplicationInfo Winner, string Reason)
             if (GameReplicationInfo != None)
                 GameReplicationInfo.Winner = Winner;
             Broadcast(Self, "SHOW'S OVER! " $ MPRI.PlayerName $ " WINS WITH $" $ MPRI.Money $ "!", 'CriticalEvent');
-            log("MonsterFightClub: show over — " $ MPRI.PlayerName $ " wins with $" $ MPRI.Money, 'MonsterFightClub');
+            log("MonsterFightClub: show over — " $ MPRI.PlayerName $ " wins with $" $ MPRI.Money, 'MonsterFightClubV1');
         }
     }
     Super.EndGame(Winner, Reason);
@@ -2962,7 +2962,7 @@ function RestartGame()
         return;
 
     // Never change levels / restart — the Monster Fight Club show is endless.
-    log("MonsterFightClub: restart suppressed (show continues)", 'MonsterFightClub');
+    log("MonsterFightClub: restart suppressed (show continues)", 'MonsterFightClubV1');
 }
 
 //==============================================================================
@@ -2993,7 +2993,7 @@ defaultproperties
      ChampionStreakLimit=3
      SpeciesGroupBases(0)="Dinotopia.Dinosaur"
 
-     BellSound=sound'MonsterFightClub.BellSound'
+     BellSound=sound'MonsterFightClubV1.BellSound'
 
      BellVolume=255
      bLogDamage=False
@@ -3016,13 +3016,13 @@ defaultproperties
      Description="Two random monsters fight a best-of-three grudge match while the audience bets on the outcome. Richest bankroll wins the show!"
      Acronym="MFC"
      ScreenShotName="UT2004Thumbnails.DMShots"
-     DecoTextName="MonsterFightClub.MonsterFightClubGame"
+     DecoTextName="MonsterFightClubV1.MonsterFightClubGame"
      BeaconName="MFC"
 
-     HUDType="MonsterFightClub.MonsterFightClubHUD"
-     ScoreBoardType="MonsterFightClub.MonsterFightClubScoreboard"
-     MapListType="MonsterFightClub.MapListMonsterFightClub"
+     HUDType="MonsterFightClubV1.MonsterFightClubHUD"
+     ScoreBoardType="MonsterFightClubV1.MonsterFightClubScoreboard"
+     MapListType="MonsterFightClubV1.MapListMonsterFightClub"
      MapPrefix="DM"
-     GameReplicationInfoClass=Class'MonsterFightClub.MonsterFightClubGRI'
-     PlayerControllerClassName="MonsterFightClub.MonsterFightClubPlayerController"
+     GameReplicationInfoClass=Class'MonsterFightClubV1.MonsterFightClubGRI'
+     PlayerControllerClassName="MonsterFightClubV1.MonsterFightClubPlayerController"
 }

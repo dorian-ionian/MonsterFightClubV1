@@ -18,7 +18,7 @@
 #   -SkipPush     compile + move + deploy only
 #=============================================================================
 param(
-    [string]$Package = "MonsterFightClub",
+    [string]$Package = "MonsterFightClubV1",
     [string]$GameRoot = "C:\Program Files (x86)\Steam\steamapps\common\Unreal Tournament 2004",
     [string]$RepoDir = "",          # default: C:\Projects\<Package>
     [switch]$SkipDeploy,
@@ -99,11 +99,20 @@ if(-not $SkipPush)
     }
     Set-Location $RepoDir
 
-    # sync the source files
-    if(Test-Path $SourceDir)
+    # sync the whole project folder (Classes, Sounds, other assets, README)
+    $ProjDir = Join-Path $GameRoot $Package
+    if(Test-Path $ProjDir)
     {
-        New-Item -ItemType Directory -Path "$RepoDir\Classes" -Force | Out-Null
-        Copy-Item "$SourceDir\*.uc" "$RepoDir\Classes\" -Force
+        Copy-Item "$ProjDir\*" $RepoDir -Recurse -Force
+    }
+    else
+    {
+        # fallback: just Classes
+        if(Test-Path $SourceDir)
+        {
+            New-Item -ItemType Directory -Path "$RepoDir\Classes" -Force | Out-Null
+            Copy-Item "$SourceDir\*.uc" "$RepoDir\Classes\" -Force
+        }
     }
     foreach($f in @("$SystemDir\$Package.ucl", "$SystemDir\$Package.ini"))
     {
@@ -112,20 +121,23 @@ if(-not $SkipPush)
             Copy-Item $f $RepoDir -Force
         }
     }
-    # redact secrets when syncing the server ini / launcher
-    if(Test-Path "$SystemDir\UT2004MFC.ini")
+    # MFC-specific server launcher/config (redacted) - only for MFC itself
+    if($Package -eq "MonsterFightClubV1")
     {
-        (Get-Content "$SystemDir\UT2004MFC.ini" -Raw) `
-            -replace 'AdminPassword=.*','AdminPassword=CHANGE_ME' `
-            -replace 'GamePassword=.*','GamePassword=CHANGE_ME' `
-            -replace 'SavedPasswords=.*','SavedPasswords=' `
-            | Set-Content "$RepoDir\UT2004MFC.ini" -Encoding ASCII
-    }
-    if(Test-Path "$SystemDir\RunServerMFC.bat")
-    {
-        (Get-Content "$SystemDir\RunServerMFC.bat" -Raw) `
-            -replace 'GamePassword=[^ ?]*','GamePassword=CHANGE_ME' `
-            | Set-Content "$RepoDir\RunServerMFC.bat" -Encoding ASCII
+        if(Test-Path "$SystemDir\UT2004MFC.ini")
+        {
+            (Get-Content "$SystemDir\UT2004MFC.ini" -Raw) `
+                -replace 'AdminPassword=.*','AdminPassword=CHANGE_ME' `
+                -replace 'GamePassword=.*','GamePassword=CHANGE_ME' `
+                -replace 'SavedPasswords=.*','SavedPasswords=' `
+                | Set-Content "$RepoDir\UT2004MFC.ini" -Encoding ASCII
+        }
+        if(Test-Path "$SystemDir\RunServerMFC.bat")
+        {
+            (Get-Content "$SystemDir\RunServerMFC.bat" -Raw) `
+                -replace 'GamePassword=[^ ?]*','GamePassword=CHANGE_ME' `
+                | Set-Content "$RepoDir\RunServerMFC.bat" -Encoding ASCII
+        }
     }
 
     # git add/commit/push

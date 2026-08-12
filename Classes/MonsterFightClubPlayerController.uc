@@ -134,7 +134,7 @@ simulated function RegisterInputInteraction()
     {
         bInputInteractionAdded = true;
         if (bLogInput)
-            log("MFC-INPUT: interaction registered (MMB toggles action cam)", 'MonsterFightClub');
+            log("MFC-INPUT: interaction registered (MMB toggles action cam)", 'MonsterFightClubV1');
     }
 }
 
@@ -142,7 +142,7 @@ exec function Use()
 {
     // DIAGNOSTIC: log every Use trigger (bLogInput in the ini).
     if (bLogInput)
-        log("MFC-INPUT: Use() called", 'MonsterFightClub');
+        log("MFC-INPUT: Use() called", 'MonsterFightClubV1');
     if (!bBetMenuOpen)
     {
         ToggleBetMenu();
@@ -183,7 +183,7 @@ exec function ToggleActionCam()
 {
     bActionCam = !bActionCam;
     if (bLogInput)
-        log("MFC-INPUT: ToggleActionCam -> " $ bActionCam, 'MonsterFightClub');
+        log("MFC-INPUT: ToggleActionCam -> " $ bActionCam, 'MonsterFightClubV1');
     if (bActionCam)
     {
         // The rig camera drives the PC's own location/rotation, so the
@@ -477,7 +477,7 @@ simulated function ZoomPreview(int Dir)
 {
     PreviewZoom = FClamp(PreviewZoom + Dir * 0.15, 0.6, 2.5);
     if (bLogInput)
-        log("MFC-INPUT: preview zoom -> " $ PreviewZoom, 'MonsterFightClub');
+        log("MFC-INPUT: preview zoom -> " $ PreviewZoom, 'MonsterFightClubV1');
 }
 
 simulated function CycleAmount(int Dir)
@@ -607,7 +607,7 @@ simulated function TrackFighters(float DeltaTime)
             log("MFC-CAM loc=" $ int(Location.X) $ "," $ int(Location.Y) $ "," $ int(Location.Z)
                 $ " mid=" $ int(Mid.X) $ "," $ int(Mid.Y) $ "," $ int(Mid.Z)
                 $ " rig=" $ CamRigIndex $ " blocked=" $ int(BlockedTime * 10)
-                $ " cut=" $ int(CutClock), 'MonsterFightClub');
+                $ " cut=" $ int(CutClock), 'MonsterFightClubV1');
         }
     }
 
@@ -750,7 +750,7 @@ simulated function vector PopOutOfGeometry(vector Loc)
 
 defaultproperties
 {
-     PlayerReplicationInfoClass=Class'MonsterFightClub.MonsterFightClubPRI'
+     PlayerReplicationInfoClass=Class'MonsterFightClubV1.MonsterFightClubPRI'
      CamRigIndex=0
      CutClock=8.000000
      bActionCam=False

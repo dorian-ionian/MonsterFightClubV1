@@ -49,5 +49,5 @@ auto state BettingLounge
 defaultproperties
 {
      bIsPlayer=True
-     PlayerReplicationInfoClass=Class'MonsterFightClub.MonsterFightClubPRI'
+     PlayerReplicationInfoClass=Class'MonsterFightClubV1.MonsterFightClubPRI'
 }

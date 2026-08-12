@@ -1,14 +1,14 @@
 //=============================================================================
 // MonsterFightClubMonsters
 // Config object holding the fight roster. Editable in
-// System\MonsterFightClub.ini under:
-//   [MonsterFightClub.MonsterFightClubMonsters]
+// System\MonsterFightClubV1.ini under:
+//   [MonsterFightClubV1.MonsterFightClubMonsters]
 //
 // Simple format:
 //   MonsterTable=(MonsterName="Pupae",MonsterClassName="SkaarjPack.SkaarjPupae")
 //=============================================================================
 class MonsterFightClubMonsters extends Object
-    config(MonsterFightClub);
+    config(MonsterFightClubV1);
 
 struct MonsterEntry
 {

@@ -39,19 +39,19 @@ function bool KeyEvent(out EInputKey Key, out EInputAction Action, float Delta)
             if (MPC != None)
             {
                 if (MPC.bLogInput)
-                    log("MFC-INPUT: KeyEvent caught key=" $ Key $ " action=" $ Action, 'MonsterFightClub');
+                    log("MFC-INPUT: KeyEvent caught key=" $ Key $ " action=" $ Action, 'MonsterFightClubV1');
                 MPC.ToggleActionCam();
             }
         }
         return true;   // consume press AND release - the binding never fires
     }
     if (Key == IK_MiddleMouse && Action == IST_Press && MPC != None && MPC.bLogInput)
-        log("MFC-INPUT: MMB seen - passing to User.ini binding", 'MonsterFightClub');
+        log("MFC-INPUT: MMB seen - passing to User.ini binding", 'MonsterFightClubV1');
 
     // DIAGNOSTIC: log every key that reaches the interaction (bLogInput).
     if (Action == IST_Press && Key != IK_LeftMouse && Key != IK_RightMouse
         && MPC != None && MPC.bLogInput)
-        log("MFC-INPUT: key=" $ Key $ " action=" $ Action, 'MonsterFightClub');
+        log("MFC-INPUT: key=" $ Key $ " action=" $ Action, 'MonsterFightClubV1');
     return false;
 }
 

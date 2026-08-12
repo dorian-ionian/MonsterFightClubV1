@@ -1,11 +1,11 @@
 //=============================================================================
 // MonsterFightClubTaunts
-// Text taunts used by the bots. Editable in System\MonsterFightClub.ini:
-//   [MonsterFightClub.MonsterFightClubTaunts]
+// Text taunts used by the bots. Editable in System\MonsterFightClubV1.ini:
+//   [MonsterFightClubV1.MonsterFightClubTaunts]
 // %p in TargetTaunts is replaced with the taunted player's name.
 //=============================================================================
 class MonsterFightClubTaunts extends Object
-    config(MonsterFightClub);
+    config(MonsterFightClubV1);
 
 var() config array<string> Taunts;         // generic show commentary
 var() config array<string> TargetTaunts;   // aimed at a specific audience member

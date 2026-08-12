@@ -67,7 +67,7 @@ function Timer()
             if (StartupClock >= 8)
             {
                 bForcedStart = true;
-                log("MonsterFightClubDriver: forcing match start (startup wait elapsed)", 'MonsterFightClub');
+                log("MonsterFightClubDriver: forcing match start (startup wait elapsed)", 'MonsterFightClubV1');
                 Game.StartMatch();
             }
         }

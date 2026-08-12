@@ -279,7 +279,7 @@ ignores SeePlayer, HearNoise, Bump;
             log("MFC-AI: " $ Pawn $ " state=" $ GetStateName() $ " enemy=" $ Enemy
                 $ " dist=" $ int(VSize(Enemy.Location - Pawn.Location))
                 $ " melee=" $ int(Pawn.MeleeRange) $ " rad=" $ int(Pawn.CollisionRadius)
-                $ " erad=" $ int(Enemy.CollisionRadius) $ " mass=" $ int(Pawn.Mass), 'MonsterFightClub');
+                $ " erad=" $ int(Enemy.CollisionRadius) $ " mass=" $ int(Pawn.Mass), 'MonsterFightClubV1');
         }
         AttackStartHealth = 0;
         if (Pawn(Target) != None)
@@ -395,7 +395,7 @@ function MaybeFallbackDamage()
     Reach = Attacker.MeleeRange + Attacker.CollisionRadius + Victim.CollisionRadius + 250;
     if (class'MonsterFightClubGame'.default.bLogDamage)
         log("MFC-FB: " $ Attacker $ " startHP=" $ AttackStartHealth $ " enemyHP=" $ Victim.Health
-            $ " dist=" $ int(VSize(Victim.Location - Attacker.Location)) $ " reach=" $ int(Reach), 'MonsterFightClub');
+            $ " dist=" $ int(VSize(Victim.Location - Attacker.Location)) $ " reach=" $ int(Reach), 'MonsterFightClubV1');
     if (VSize(Victim.Location - Attacker.Location) <= Reach)
     {
         Dmg = Max(15, int(25 * Attacker.Mass / 120.0));   // scale a bit with size
@@ -406,7 +406,7 @@ function MaybeFallbackDamage()
         // Outcome check: did the health actually drop? If not, the
         // pack refused the damage - bypass it.
         if (class'MonsterFightClubGame'.default.bLogDamage)
-            log("MFC-FB: " $ Attacker $ " after melee hp=" $ Victim.Health $ " (start " $ StartHP $ ")", 'MonsterFightClub');
+            log("MFC-FB: " $ Attacker $ " after melee hp=" $ Victim.Health $ " (start " $ StartHP $ ")", 'MonsterFightClubV1');
         if (Victim.Health >= StartHP)
         {
             // Some packs (Dinotopia) override TakeDamage and swallow
@@ -420,7 +420,7 @@ function MaybeFallbackDamage()
             if (NewHP <= 0 && Attacker.Controller != None)
                 Victim.Died(Attacker.Controller, class'SkaarjPack.MeleeDamage', Victim.Location);
             if (class'MonsterFightClubGame'.default.bLogDamage)
-                log("MFC-FB: " $ Attacker $ " bypass dmg=" $ Dmg $ " hp now=" $ NewHP, 'MonsterFightClub');
+                log("MFC-FB: " $ Attacker $ " bypass dmg=" $ Dmg $ " hp now=" $ NewHP, 'MonsterFightClubV1');
             AttackStartHealth = NewHP;
         }
     }
