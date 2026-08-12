@@ -1940,22 +1940,33 @@ function BeginIntermission()
     local int Champ;
     local string ChampName;
     local bool bDefended;
+    local bool bSeriesDraw;
 
     Phase = PHASE_INTERMISSION;
     PhaseClock = 0;
     bBettingOpen = false;
 
-    if (RoundWins[0] >= RoundWins[1])
-        Champ = 1;
-    else
-        Champ = 2;
-    ChampName = GetFighterName(Champ);
+    // A tied series (rounds ran out with equal wins, e.g. 1-1 in a
+    // best-of-3) is a DRAW - nobody won the matchup, so no champion is
+    // selected and the announcement says so.
+    bSeriesDraw = (RoundWins[0] == RoundWins[1]);
+
+    if (!bSeriesDraw)
+    {
+        if (RoundWins[0] > RoundWins[1])
+            Champ = 1;
+        else
+            Champ = 2;
+        ChampName = GetFighterName(Champ);
+    }
 
     // Gauntlet mode: the matchup winner becomes the standing champion and
     // will defend against a new challenger in the next matchup. The streak
     // counts CONSECUTIVE wins by the SAME champion - when a challenger
-    // dethrones the champ, the streak restarts at 1.
-    if (bWinnerAdvances)
+    // dethrones the champ, the streak restarts at 1. On a series DRAW no
+    // champion is crowned and the standing champion (if any) keeps their
+    // title - they weren't beaten, the matchup just ended unresolved.
+    if (bWinnerAdvances && !bSeriesDraw)
     {
         bDefended = (Champ == 1 && ChampionClass == FighterAClass)
                  || (Champ == 2 && ChampionClass == FighterBClass);
@@ -1980,16 +1991,22 @@ function BeginIntermission()
 
     UpdateGRI();
     PushBettingState();
-    Broadcast(Self, Caps(ChampName) $ " TAKES THE MATCHUP " $ RoundWins[Champ - 1] $ "-" $ RoundWins[2 - Champ] $ "!", 'CriticalEvent');
-    if (bWinnerAdvances)
-    {
-        if (ChampionStreak > 1)
-            Broadcast(Self, Caps(ChampName) $ " DEFENDS AGAIN - STREAK " $ ChampionStreak $ " IN A ROW!", 'CriticalEvent');
-        else
-            Broadcast(Self, Caps(ChampName) $ " IS THE NEW CHAMPION!", 'CriticalEvent');
-    }
+
+    if (bSeriesDraw)
+        Broadcast(Self, "THE MATCHUP ENDS IN A DRAW " $ RoundWins[0] $ "-" $ RoundWins[1] $ " - NO CHAMPION!", 'CriticalEvent');
     else
-        Broadcast(Self, "NEW CHALLENGERS WILL BE CHOSEN SOON...", 'CriticalEvent');
+    {
+        Broadcast(Self, Caps(ChampName) $ " TAKES THE MATCHUP " $ RoundWins[Champ - 1] $ "-" $ RoundWins[2 - Champ] $ "!", 'CriticalEvent');
+        if (bWinnerAdvances)
+        {
+            if (ChampionStreak > 1)
+                Broadcast(Self, Caps(ChampName) $ " DEFENDS AGAIN - STREAK " $ ChampionStreak $ " IN A ROW!", 'CriticalEvent');
+            else
+                Broadcast(Self, Caps(ChampName) $ " IS THE NEW CHAMPION!", 'CriticalEvent');
+        }
+        else
+            Broadcast(Self, "NEW CHALLENGERS WILL BE CHOSEN SOON...", 'CriticalEvent');
+    }
 
     // let the cameras enjoy the celebration
     CutToFight(None, true);
