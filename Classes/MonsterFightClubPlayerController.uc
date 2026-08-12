@@ -60,6 +60,7 @@ var float LastCamRescueTime;    // rate-limiter for the server's LOS camera watc
 var bool bInputInteractionAdded; // the MMB/Backslash interaction is attached
 var bool bVoluntaryOut;         // player chose /out - keep them marked Out
 var float PreviewZoom;          // client-side zoom for the fighter cards (wheel)
+var bool bCameraGateLogged;     // client: the one-time MFC-CAM-GATE report fired
 
 replication
 {
@@ -123,28 +124,18 @@ simulated function ClientCameraCut(vector Offset, int CutID, bool bSnap)
 // camera - no User.ini editing needed for any player.
 simulated event PostBeginPlay()
 {
-    local MonsterFightClubGRI G;
-
     Super.PostBeginPlay();
     if (Role < ROLE_Authority && Player != None)
         RegisterInputInteraction();
 
     // ONE-TIME SETUP DIAGNOSTIC (client only): shows exactly what this
-    // client sees for the camera-log gate. If the preview build doesn't
-    // apply config() vars, clientIni will read False here even though the
-    // ini says True - and the GRI flag (server-pushed) is the fallback.
+    // client sees for the camera-log gate at spawn. The GRI flag may not
+    // be linked/replicated YET here (GRI=None is normal) - a second
+    // diagnostic fires from PlayerTick once the GRI is available.
     if (Role < ROLE_Authority)
-    {
-        G = MonsterFightClubGRI(GameReplicationInfo);
-        if (G != None)
-            log("MFC-CAM-SETUP: class=" $ string(Class)
-                $ " clientIni bLogCamera=" $ bLogCamera
-                $ " GRI bCameraLog=" $ G.bCameraLog, 'MonsterFightClubV1');
-        else
-            log("MFC-CAM-SETUP: class=" $ string(Class)
-                $ " clientIni bLogCamera=" $ bLogCamera
-                $ " GRI=None", 'MonsterFightClubV1');
-    }
+        log("MFC-CAM-SETUP: class=" $ string(Class)
+            $ " clientIni bLogCamera=" $ bLogCamera
+            $ " GRI=" $ MonsterFightClubGRI(GameReplicationInfo), 'MonsterFightClubV1');
 }
 
 // The camera log gate: the client's own ini OR the server-pushed GRI flag.
@@ -160,6 +151,25 @@ simulated function bool ShouldLogCamera()
     if (G != None && G.bCameraLog)
         return true;
     return false;
+}
+
+// Client-only: once the GRI has replicated, log the REAL gate state so we
+// can confirm the server-pushed flag arrived (the spawn-time diagnostic
+// can't see it - GRI is None there). Fires once, a tick after the GRI
+// links, then never again.
+simulated function LogCameraGateOnce()
+{
+    local MonsterFightClubGRI G;
+
+    if (bCameraGateLogged || Role >= ROLE_Authority)
+        return;
+    G = MonsterFightClubGRI(GameReplicationInfo);
+    if (G == None)
+        return;   // not linked yet - retry next tick
+    bCameraGateLogged = true;
+    log("MFC-CAM-GATE: clientIni=" $ bLogCamera
+        $ " GRI.bCameraLog=" $ G.bCameraLog
+        $ " => logging=" $ ShouldLogCamera(), 'MonsterFightClubV1');
 }
 
 // Register the MMB/Backslash input interaction (client only). Retries
@@ -205,6 +215,11 @@ simulated function PlayerTick(float DeltaTime)
     // add the input interaction now (client-side only).
     if (Role < ROLE_Authority)
         RegisterInputInteraction();
+
+    // Client-only diagnostic: report the REAL camera-log gate once the GRI
+    // has replicated (the spawn-time setup line can't see it).
+    if (Role < ROLE_Authority)
+        LogCameraGateOnce();
 
     // The betting menu only lives while the window is open. If the window
     // closes (round starts, show ends) any open menu closes with it, so it
