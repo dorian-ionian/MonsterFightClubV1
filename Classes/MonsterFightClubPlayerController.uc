@@ -36,6 +36,13 @@ var float ActionCamZoom;    // automatic broadcast zoom (0.5-3.0): pushes in on 
                             // action over time, drifts back out on the wide shot
 var float ZoomTimer;        // time until the next automatic zoom change
 var float ZoomTarget;       // where the auto-zoom is gliding toward
+var int FocusSubject;       // which fighter the action cam centers on (0=mid,
+                            // 1=A, 2=B) - alternates on every cut
+var int LastFocusSubject;   // last applied subject (to detect changes)
+var vector SubjectCenter;   // smoothed center of the focused fighter
+var bool bSubjectCenterValid;
+var bool bSubjectCenterInit;
+var vector TrackPivot;      // where the rigs orbit (subject or midpoint)
 var bool bActionCam;        // true = boxing/action camera (rigs), false = stock spectator cam
 
 // Client state pushed from the server via RPCs (independent of GRI
@@ -624,6 +631,58 @@ simulated function TrackFighters(float DeltaTime)
     Aim = Mid;
     Aim.Z += 70;   // aim at the fighters' torsos
 
+    // --- FOCUS SUBJECT: a real broadcast alternates who's in the frame.
+    // The camera center (rig orbit pivot) shifts toward the subject so the
+    // shot frames THAT fighter, not the gap between them. 0 = both (wide
+    // two-shot), 1 = fighter A, 2 = fighter B. Refreshed below when the
+    // subject changes.
+    if (FocusSubject != LastFocusSubject)
+    {
+        LastFocusSubject = FocusSubject;
+        bSubjectCenterValid = false;
+    }
+    if (FocusSubject == 1 && FightFocusA != vect(0,0,0))
+    {
+        SubjectCenter = FightFocusA;
+        bSubjectCenterValid = true;
+    }
+    else if (FocusSubject == 2 && FightFocusB != vect(0,0,0))
+    {
+        SubjectCenter = FightFocusB;
+        bSubjectCenterValid = true;
+    }
+    else
+        bSubjectCenterValid = false;   // mid/wide: track the fight midpoint
+
+    // Track the subject center smoothly (the focus RPC is ~4x/sec).
+    if (bSubjectCenterValid)
+    {
+        if (!bSubjectCenterInit)
+        {
+            if (FocusSubject == 1)
+                SubjectCenter = FightFocusA;
+            else
+                SubjectCenter = FightFocusB;
+            bSubjectCenterInit = true;
+        }
+        else
+        {
+            // smooth toward the fighter's CURRENT position
+            if (FocusSubject == 1)
+                SubjectCenter += (FightFocusA - SubjectCenter) * FMin(1.0, 6.0 * DeltaTime);
+            else
+                SubjectCenter += (FightFocusB - SubjectCenter) * FMin(1.0, 6.0 * DeltaTime);
+        }
+    }
+    else
+        bSubjectCenterInit = false;
+
+    // The orbit pivot = subject center if we have one, else the midpoint.
+    if (bSubjectCenterValid)
+        TrackPivot = SubjectCenter;
+    else
+        TrackPivot = Mid;
+
     // --- Director: cut to a different rig periodically, or NOW when the
     // current shot has been blocked by a wall for too long (stuck escape) ---
     CutClock -= DeltaTime;
@@ -645,6 +704,11 @@ simulated function TrackFighters(float DeltaTime)
         while (NewRig == CamRigIndex)
             NewRig = Rand(3);             // always cut to a DIFFERENT rig
         CamRigIndex = NewRig;
+        // Alternate the FOCUS SUBJECT on every cut too - a real director
+        // doesn't keep the same fighter centered shot after shot.
+        FocusSubject++;
+        if (FocusSubject > 2)
+            FocusSubject = 0;
         bCutPending = true;
     }
 
@@ -686,13 +750,14 @@ simulated function TrackFighters(float DeltaTime)
     }
 }
 
-// The world position of the current rig around the fight midpoint. The
-// rigs sit at the shared orbit angle (plus a 120-degree offset each), so
-// the whole camera setup revolves around the fight/winner.
+// The world position of the current rig around the SUBJECT (the focused
+// fighter when FocusSubject is 1/2, else the fight midpoint). The rigs sit
+// at the shared orbit angle (plus a 120-degree offset each), so the whole
+// camera setup revolves around the subject/winner.
 simulated function vector GetRigPosition(vector Mid)
 {
     local float RigAngle;
-    local vector Loc;
+    local vector Loc, Center;
 
     switch (CamRigIndex)
     {
@@ -701,7 +766,14 @@ simulated function vector GetRigPosition(vector Mid)
         default:  RigAngle = CamOrbitAngle + 4.189;  break;   // corner camera B (240 deg)
     }
 
-    Loc = Mid;
+    // Orbit around the SUBJECT (focused fighter) so the shot stays on
+    // them as they move; fall back to the fight midpoint for the wide shot.
+    if (bSubjectCenterValid)
+        Center = SubjectCenter;
+    else
+        Center = Mid;
+
+    Loc = Center;
     // ActionCamZoom dollies the rigs in/out on the fighters automatically.
     Loc.X += 320 * ActionCamZoom * Cos(RigAngle);
     Loc.Y += 320 * ActionCamZoom * Sin(RigAngle);
@@ -801,6 +873,8 @@ defaultproperties
      ActionCamZoom=1.200000
      ZoomTarget=1.200000
      ZoomTimer=4.000000
+     FocusSubject=0
+     LastFocusSubject=0
      PreviewZoom=1.000000
      bLogCamera=False
      bLogInput=False
