@@ -197,7 +197,15 @@ function PostBeginPlay()
     // a valid handle. Assigning it in InitGame was too early (GRI was None).
     FCGRI = MonsterFightClubGRI(GameReplicationInfo);
     if (FCGRI != None)
+    {
         FCGRI.RoundsTotal = RoundsPerMatch;
+        // Push the camera-log gate to every client - the server's ini value
+        // (read via the PlayerController class default) is authoritative, so
+        // MFC-CAM logs work even on clients whose config() reading is
+        // unreliable (the 64-bit preview build).
+        FCGRI.bCameraLog = class'MonsterFightClubPlayerController'.default.bLogCamera;
+        FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
+    }
 
     // Dedicated show driver: ticks independently of the game state machine
     if (Role == ROLE_Authority)

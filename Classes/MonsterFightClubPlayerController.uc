@@ -123,9 +123,43 @@ simulated function ClientCameraCut(vector Offset, int CutID, bool bSnap)
 // camera - no User.ini editing needed for any player.
 simulated event PostBeginPlay()
 {
+    local MonsterFightClubGRI G;
+
     Super.PostBeginPlay();
     if (Role < ROLE_Authority && Player != None)
         RegisterInputInteraction();
+
+    // ONE-TIME SETUP DIAGNOSTIC (client only): shows exactly what this
+    // client sees for the camera-log gate. If the preview build doesn't
+    // apply config() vars, clientIni will read False here even though the
+    // ini says True - and the GRI flag (server-pushed) is the fallback.
+    if (Role < ROLE_Authority)
+    {
+        G = MonsterFightClubGRI(GameReplicationInfo);
+        if (G != None)
+            log("MFC-CAM-SETUP: class=" $ string(Class)
+                $ " clientIni bLogCamera=" $ bLogCamera
+                $ " GRI bCameraLog=" $ G.bCameraLog, 'MonsterFightClubV1');
+        else
+            log("MFC-CAM-SETUP: class=" $ string(Class)
+                $ " clientIni bLogCamera=" $ bLogCamera
+                $ " GRI=None", 'MonsterFightClubV1');
+    }
+}
+
+// The camera log gate: the client's own ini OR the server-pushed GRI flag.
+// The server flag is the reliable one - the 64-bit preview client does not
+// always apply config() vars from custom inis at spawn time.
+simulated function bool ShouldLogCamera()
+{
+    local MonsterFightClubGRI G;
+
+    if (bLogCamera)
+        return true;
+    G = MonsterFightClubGRI(GameReplicationInfo);
+    if (G != None && G.bCameraLog)
+        return true;
+    return false;
 }
 
 // Register the MMB/Backslash input interaction (client only). Retries
@@ -607,26 +641,32 @@ simulated function TrackFighters(float DeltaTime)
     local int NewRig;
     local bool bBlocked;
 
+    // --- Debug camera log (1/sec) - runs FIRST so it fires in EVERY
+    // camera state (no offset yet, no focus yet, mid-drive). Gated by the
+    // client ini OR the server-pushed GRI flag.
+    if (ShouldLogCamera())
+    {
+        CamLogClock -= DeltaTime;
+        if (CamLogClock <= 0)
+        {
+            CamLogClock = 1.0;
+            log("MFC-CAM " $ int(Level.TimeSeconds)
+                $ " cam=" $ bCamOffsetValid
+                $ " focus=" $ bFocusActive
+                $ " rig=" $ CamRigIndex
+                $ " subj=" $ FocusSubject
+                $ " zoom=" $ ActionCamZoom
+                $ " cut=" $ int(CutClock)
+                $ " loc=" $ int(Location.X) $ "," $ int(Location.Y) $ "," $ int(Location.Z), 'MonsterFightClubV1');
+        }
+    }
+
     if (!bCamOffsetValid)
         return;
 
     // --- Fight midpoint (smoothed against 8Hz focus updates) ---
     if (!GetFightMidpoint(Mid, DeltaTime))
         return;
-
-    // --- Debug camera log (1/sec, config-gated) ---
-    if (bLogCamera)
-    {
-        CamLogClock -= DeltaTime;
-        if (CamLogClock <= 0)
-        {
-            CamLogClock = 1.0;
-            log("MFC-CAM loc=" $ int(Location.X) $ "," $ int(Location.Y) $ "," $ int(Location.Z)
-                $ " mid=" $ int(Mid.X) $ "," $ int(Mid.Y) $ "," $ int(Mid.Z)
-                $ " rig=" $ CamRigIndex $ " blocked=" $ int(BlockedTime * 10)
-                $ " cut=" $ int(CutClock), 'MonsterFightClubV1');
-        }
-    }
 
     Aim = Mid;
     Aim.Z += 70;   // aim at the fighters' torsos

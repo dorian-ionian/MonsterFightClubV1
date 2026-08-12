@@ -19,6 +19,9 @@ var int PhaseTimeLeft;
 var bool bBettingOpen;
 var bool bShowEnded;          // the time limit fired - no more betting
 var bool bSlowMo;
+var bool bCameraLog;          // server pushes this to clients: enable the
+                              // client-side MFC-CAM logs (survives client
+                              // config quirks on the 64-bit preview build)
 var bool bFightersActive;     // at least one fighter is alive
 var vector FighterALocation;  // live positions — the client camera tracks these
 var vector FighterBLocation;
@@ -35,7 +38,7 @@ replication
         ChampionName, ChampionStreak;
 
     reliable if (bNetDirty && Role == ROLE_Authority)
-        Phase, RoundNumber, MatchupNumber, PhaseTimeLeft, RoundWinsA, RoundWinsB, bBettingOpen, bShowEnded, bSlowMo;
+        Phase, RoundNumber, MatchupNumber, PhaseTimeLeft, RoundWinsA, RoundWinsB, bBettingOpen, bShowEnded, bSlowMo, bCameraLog;
 
     // Health replicates RELIABLY - unreliable drops (flaky connections)
     // left the cards showing the stock 100 default for dinos/dragons.
