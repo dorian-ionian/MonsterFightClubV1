@@ -47,6 +47,10 @@ var() config bool   bWinnerAdvances;   // gauntlet mode: the matchup winner stay
 var() config float  ChallengerOddsBonus; // gauntlet: EXTRA odds multiplier for
                                        // betting AGAINST the defending champion
                                        // (0.5 = +50% payout, default 0.5)
+var() config bool   bMutateMode;        // mid-fight: a fighter can MUTATE and
+                                       // gain a positive combat boost (default false)
+var() config float  MutateChance;       // chance per round that a mutation triggers (default 0.35)
+var() config float  MutateBoost;        // strength of the mutation boost (1.5 = +50%, default 1.5)
 var() config int    ChampionStreakLimit; // gauntlet mode: the champion retires
                                        // undefeated after this many consecutive
                                        // matchup wins so the show doesn't get
@@ -127,6 +131,11 @@ var class<Monster> FighterAClass, FighterBClass;
 var string FighterAName, FighterBName;
 var float FighterAPower, FighterBPower;     // power ratings used for odds
 var float FighterADamageScale, FighterBDamageScale;
+var bool bMutatedA, bMutatedB;   // mutation already applied to this fighter this round
+var bool bRegenA, bRegenB;       // fighter is regenerating health over time
+var float MutationTimer;         // seconds until the scheduled mid-fight mutation
+var int MutationTarget;          // 1 = fighter A, 2 = fighter B
+var int MutationType;            // 0=damage 1=health 2=speed 3=regen
 var class<Monster> ChampionClass;   // gauntlet mode: the standing champion's class
 var string ChampionName;            // gauntlet mode: the standing champion's name
 var int ChampionStreak;             // gauntlet mode: consecutive matchup wins
@@ -762,6 +771,14 @@ function StartNewMatchup()
     RoundWins[0] = 0;
     RoundWins[1] = 0;
     bChampionCrowned = false;
+    // Reset mutation state - every matchup starts clean.
+    bMutatedA = false;
+    bMutatedB = false;
+    bRegenA = false;
+    bRegenB = false;
+    MutationTimer = 0;
+    MutationTarget = 0;
+    MutationType = 0;
     PickTwoFighters();
     // Read the REAL spawn health right after booking, while the level is
     // fresh (previous round's fighters already destroyed). The probe spawn
@@ -1249,6 +1266,19 @@ function StartFight()
     PushBettingState();
 
     SpawnFighters();
+
+    // MUTATE MODE: roll the dice - a fighter may undergo a mid-fight
+    // mutation that boosts their combat ability. The mutation itself fires
+    // a few seconds INTO the fight (MutationTimer), so it lands mid-match
+    // like the feature promises - never at the bell.
+    if (default.bMutateMode && FRand() < default.MutateChance)
+    {
+        MutationTarget = 1 + Rand(2);   // 1 or 2
+        MutationType = Rand(4);         // 0..3
+        MutationTimer = 4.0 + FRand() * 6.0;   // mutate 4-10s into the fight
+    }
+    else
+        MutationTimer = 0;
 
     // Lock every viewer onto the fresh fighters with the stock chase
     // camera (the standard spectator experience - no custom camera code).
@@ -1846,6 +1876,70 @@ function float GetFighterDamageScale(Monster M)
     if (M == FighterB)
         return FighterBDamageScale;
     return 1.0;
+}
+
+// A fighter undergoes a mid-fight mutation - a POSITIVE combat boost.
+// Type 0: damage surge (deals more damage)
+// Type 1: health surge (max health + full heal)
+// Type 2: speed surge (moves + jumps faster)
+// Type 3: regeneration (heals over time)
+// The boost strength is configurable (MutateBoost, default 1.5 = +50%).
+function ApplyMutation()
+{
+    local Monster M;
+    local string MName;
+    local string S;
+
+    if (MutationTarget == 1)
+    {
+        M = FighterA;
+        MName = FighterAName;
+    }
+    else
+    {
+        M = FighterB;
+        MName = FighterBName;
+    }
+    if (M == None || M.Health <= 0)
+        return;   // dead or missing - no mutation
+
+    switch (MutationType)
+    {
+        case 0:   // damage surge
+            if (MutationTarget == 1)
+                FighterADamageScale *= default.MutateBoost;
+            else
+                FighterBDamageScale *= default.MutateBoost;
+            S = Caps(MName) $ " IS MUTATING - DAMAGE SURGE!";
+            break;
+        case 1:   // health surge
+            M.HealthMax = Max(1, int(M.HealthMax * default.MutateBoost));
+            M.Health = M.HealthMax;
+            S = Caps(MName) $ "'S BODY HARDENS - HEALTH SURGE!";
+            break;
+        case 2:   // speed surge
+            M.GroundSpeed = M.GroundSpeed * default.MutateBoost;
+            if (M.bCanFly)
+                M.AirSpeed = M.AirSpeed * default.MutateBoost;
+            M.JumpZ = M.JumpZ * (1.0 + 0.5 * (default.MutateBoost - 1.0));
+            S = Caps(MName) $ " GROWS FASTER - SPEED SURGE!";
+            break;
+        default:  // regeneration
+            if (MutationTarget == 1)
+                bRegenA = true;
+            else
+                bRegenB = true;
+            S = Caps(MName) $ " IS REGENERATING!";
+            break;
+    }
+
+    if (MutationTarget == 1)
+        bMutatedA = true;
+    else
+        bMutatedB = true;
+
+    Broadcast(Self, S, 'CriticalEvent');
+    log("MonsterFightClub: mutation - " $ MName $ " type=" $ MutationType $ " boost=" $ default.MutateBoost, 'MonsterFightClubV1');
 }
 
 function OnMonsterKilled(Controller Killer, Monster Victim)
@@ -2703,6 +2797,18 @@ function RoundTick()
                     SpawnFighters();
             }
             EnforceFight(1);
+            // Mutation countdown: the scheduled mutation fires mid-fight.
+            if (MutationTimer > 0)
+            {
+                MutationTimer -= 1;
+                if (MutationTimer <= 0)
+                    ApplyMutation();
+            }
+            // Regeneration mutation: the mutant heals a little every second.
+            if (bRegenA && FighterA != None && FighterA.Health > 0)
+                FighterA.Health = Min(FighterA.HealthMax, FighterA.Health + Max(1, int(0.02 * FighterA.HealthMax)));
+            if (bRegenB && FighterB != None && FighterB.Health > 0)
+                FighterB.Health = Min(FighterB.HealthMax, FighterB.Health + Max(1, int(0.02 * FighterB.HealthMax)));
             if (PhaseClock >= RoundTimeLimit)
                 RoundTimeout();
             break;
@@ -3108,6 +3214,9 @@ defaultproperties
      bTeleportStuckFighters=True
      bWinnerAdvances=False
      ChallengerOddsBonus=0.500000
+     bMutateMode=False
+     MutateChance=0.350000
+     MutateBoost=1.500000
      ChampionStreakLimit=3
      SpeciesGroupBases(0)="Dinotopia.Dinosaur"
 
