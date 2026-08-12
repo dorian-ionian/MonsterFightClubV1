@@ -14,6 +14,7 @@ var byte Phase;                 // see MonsterFightClubGame phase constants
 var int RoundNumber;
 var int RoundsTotal;
 var int MatchupNumber;
+var int RoundWinsA, RoundWinsB; // current matchup score (best-of-N)
 var int PhaseTimeLeft;
 var bool bBettingOpen;
 var bool bShowEnded;          // the time limit fired - no more betting
@@ -34,7 +35,7 @@ replication
         ChampionName, ChampionStreak;
 
     reliable if (bNetDirty && Role == ROLE_Authority)
-        Phase, RoundNumber, MatchupNumber, PhaseTimeLeft, bBettingOpen, bShowEnded, bSlowMo;
+        Phase, RoundNumber, MatchupNumber, PhaseTimeLeft, RoundWinsA, RoundWinsB, bBettingOpen, bShowEnded, bSlowMo;
 
     // Health replicates RELIABLY - unreliable drops (flaky connections)
     // left the cards showing the stock 100 default for dinos/dragons.

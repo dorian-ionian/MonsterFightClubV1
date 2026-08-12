@@ -147,13 +147,15 @@ simulated function DrawFightInfo(Canvas C)
             NameB = MPC.ClientFighterBName;
     }
 
-    // round line
+    // round line + live matchup score (shown all the time - betting,
+    // fight, result)
     if (NameA != "")
     {
         C.Font = GetMediumFontFor(C);
         C.SetDrawColor(255, 220, 120, 255);
         S = "ROUND " $ Min(G.RoundNumber, G.RoundsTotal) $ " OF " $ G.RoundsTotal $ "  -  "
-            $ Caps(NameA) $ " VS " $ Caps(NameB);
+            $ Caps(NameA) $ " VS " $ Caps(NameB)
+            $ "   (SCORE " $ G.RoundWinsA $ "-" $ G.RoundWinsB $ ")";
         C.StrLen(S, XL, YL);
         C.SetPos((C.ClipX - XL) * 0.5, 0.74 * C.ClipY);
         C.DrawText(S);

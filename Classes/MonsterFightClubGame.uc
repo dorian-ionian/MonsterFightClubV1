@@ -44,6 +44,9 @@ var() config float  SlowMoDuration;       // seconds of slow motion (game time)
 var() config bool   bTeleportStuckFighters; // teleport monsters that refuse to fight (default true)
 var() config bool   bWinnerAdvances;   // gauntlet mode: the matchup winner stays
                                        // and fights a new challenger (default false)
+var() config float  ChallengerOddsBonus; // gauntlet: EXTRA odds multiplier for
+                                       // betting AGAINST the defending champion
+                                       // (0.5 = +50% payout, default 0.5)
 var() config int    ChampionStreakLimit; // gauntlet mode: the champion retires
                                        // undefeated after this many consecutive
                                        // matchup wins so the show doesn't get
@@ -2316,9 +2319,24 @@ function bool PlaceBotBet(MonsterFightClubBot B)
 
 function float GetOdds(int Fighter)
 {
+    local float Base;
+
     if (Fighter == 1)
-        return FighterBPower / Max(0.1, FighterAPower);
-    return FighterAPower / Max(0.1, FighterBPower);
+        Base = FighterBPower / Max(0.1, FighterAPower);
+    else
+        Base = FighterAPower / Max(0.1, FighterBPower);
+
+    // Gauntlet reward: betting against the defending champion pays extra.
+    // The champion is whoever ChampionClass points at, so the bonus lands
+    // on the OTHER fighter (the challenger) whichever side they're on.
+    if (bWinnerAdvances && ChampionClass != None)
+    {
+        if (Fighter == 1 && FighterAClass != ChampionClass)
+            Base *= (1.0 + ChallengerOddsBonus);
+        else if (Fighter == 2 && FighterBClass != ChampionClass)
+            Base *= (1.0 + ChallengerOddsBonus);
+    }
+    return Base;
 }
 
 // The betting menu only offers these amounts (plus ALL-IN for the whole
@@ -2466,10 +2484,12 @@ function MaybeTaunt(MonsterFightClubBot B)
         S = class'MonsterFightClubTaunts'.default.TargetTaunts[Rand(class'MonsterFightClubTaunts'.default.TargetTaunts.Length)];
         S = Repl(S, "%p", TargetPRI.PlayerName);
     }
-    else if (FRand() < 0.5 && FighterAName != "" && FighterBName != ""
+    else if (Phase == PHASE_FIGHT && FRand() < 0.5 && FighterAName != "" && FighterBName != ""
              && class'MonsterFightClubTaunts'.default.FighterTaunts.Length > 0)
     {
-        // aimed at the CURRENT fighters - %a / %b become their names
+        // aimed at the CURRENT fighters - %a / %b become their names.
+        // Only during an actual FIGHT - betting chatter about the matchup
+        // stays generic so the commentary isn't stale mid-window.
         S = class'MonsterFightClubTaunts'.default.FighterTaunts[Rand(class'MonsterFightClubTaunts'.default.FighterTaunts.Length)];
         S = Repl(S, "%a", Caps(FighterAName));
         S = Repl(S, "%b", Caps(FighterBName));
@@ -2731,6 +2751,8 @@ function UpdateGRI()
     // to the actual best-of-N total (otherwise the HUD shows "4/3").
     FCGRI.RoundNumber = Min(GetDisplayRound(), RoundsPerMatch);
     FCGRI.MatchupNumber = MatchupNumber;
+    FCGRI.RoundWinsA = RoundWins[0];
+    FCGRI.RoundWinsB = RoundWins[1];
     FCGRI.bBettingOpen = bBettingOpen;
 }
 
@@ -2915,6 +2937,7 @@ function PushBettingState()
     OldMatchup = FCGRI.MatchupNumber;
     if (OldPhase != Phase || OldRound != GetDisplayRound() || OldMatchup != MatchupNumber
         || FCGRI.bBettingOpen != bBettingOpen
+        || FCGRI.RoundWinsA != RoundWins[0] || FCGRI.RoundWinsB != RoundWins[1]
         || FCGRI.FighterAName != FighterAName || FCGRI.FighterBName != FighterBName)
         bChanged = true;
 
@@ -2922,6 +2945,8 @@ function PushBettingState()
     FCGRI.Phase = Phase;
     FCGRI.RoundNumber = Min(GetDisplayRound(), RoundsPerMatch);
     FCGRI.MatchupNumber = MatchupNumber;
+    FCGRI.RoundWinsA = RoundWins[0];
+    FCGRI.RoundWinsB = RoundWins[1];
     FCGRI.bBettingOpen = bBettingOpen;
     FCGRI.FighterAName = FighterAName;
     FCGRI.FighterBName = FighterBName;
@@ -3053,6 +3078,7 @@ defaultproperties
      SlowMoDuration=1.500000
      bTeleportStuckFighters=True
      bWinnerAdvances=False
+     ChallengerOddsBonus=0.500000
      ChampionStreakLimit=3
      SpeciesGroupBases(0)="Dinotopia.Dinosaur"
 
