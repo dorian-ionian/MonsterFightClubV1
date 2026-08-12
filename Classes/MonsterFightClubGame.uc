@@ -940,6 +940,18 @@ function BuildMonsterIndex(out array<int> Idx)
 
 function BeginBettingPhase()
 {
+    local int Target;
+
+    // Best-of-N: the moment a fighter has clinched the series (e.g. 2-0 in
+    // a best-of-3), there IS no next round - skip straight to the
+    // intermission so "ROUND 3 OF 3" is never announced or bet on.
+    Target = (RoundsPerMatch + 1) / 2;
+    if (RoundWins[0] >= Target || RoundWins[1] >= Target || RoundNumber > RoundsPerMatch)
+    {
+        BeginIntermission();
+        return;
+    }
+
     Phase = PHASE_BETTING;
     PhaseClock = 0;
     bBettingOpen = true;
@@ -2672,6 +2684,17 @@ function bool HasHumanPlayers()
     return false;
 }
 
+// The round the HUD/scoreboard should show. RoundNumber is incremented at
+// round END, so during RESULT and INTERMISSION it already points at the
+// NEXT round - which may not exist (a 2-0 sweep in best-of-3 has no round
+// 3). Show the round that actually just happened instead.
+function int GetDisplayRound()
+{
+    if (Phase == PHASE_RESULT || Phase == PHASE_INTERMISSION)
+        return Max(1, RoundNumber - 1);
+    return RoundNumber;
+}
+
 function UpdateGRI()
 {
     if (FCGRI == None)
@@ -2679,7 +2702,7 @@ function UpdateGRI()
     FCGRI.Phase = Phase;
     // RoundNumber is incremented at round END, so clamp what we display
     // to the actual best-of-N total (otherwise the HUD shows "4/3").
-    FCGRI.RoundNumber = Min(Max(1, RoundNumber), RoundsPerMatch);
+    FCGRI.RoundNumber = Min(GetDisplayRound(), RoundsPerMatch);
     FCGRI.MatchupNumber = MatchupNumber;
     FCGRI.bBettingOpen = bBettingOpen;
 }
@@ -2863,14 +2886,14 @@ function PushBettingState()
     OldPhase = FCGRI.Phase;
     OldRound = FCGRI.RoundNumber;
     OldMatchup = FCGRI.MatchupNumber;
-    if (OldPhase != Phase || OldRound != RoundNumber || OldMatchup != MatchupNumber
+    if (OldPhase != Phase || OldRound != GetDisplayRound() || OldMatchup != MatchupNumber
         || FCGRI.bBettingOpen != bBettingOpen
         || FCGRI.FighterAName != FighterAName || FCGRI.FighterBName != FighterBName)
         bChanged = true;
 
     // always keep the GRI itself fresh (cheap, local)
     FCGRI.Phase = Phase;
-    FCGRI.RoundNumber = Min(Max(1, RoundNumber), RoundsPerMatch);
+    FCGRI.RoundNumber = Min(GetDisplayRound(), RoundsPerMatch);
     FCGRI.MatchupNumber = MatchupNumber;
     FCGRI.bBettingOpen = bBettingOpen;
     FCGRI.FighterAName = FighterAName;
