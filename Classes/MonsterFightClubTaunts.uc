@@ -3,12 +3,14 @@
 // Text taunts used by the bots. Editable in System\MonsterFightClubV1.ini:
 //   [MonsterFightClubV1.MonsterFightClubTaunts]
 // %p in TargetTaunts is replaced with the taunted player's name.
+// %a / %b in FighterTaunts are replaced with the CURRENT fighter names.
 //=============================================================================
 class MonsterFightClubTaunts extends Object
     config(MonsterFightClubV1);
 
 var() config array<string> Taunts;         // generic show commentary
 var() config array<string> TargetTaunts;   // aimed at a specific audience member
+var() config array<string> FighterTaunts;  // aimed at the current fighters (%a / %b)
 
 defaultproperties
 {
@@ -61,4 +63,21 @@ defaultproperties
      TargetTaunts(13)="The house always wins, %p. The house always wins."
      TargetTaunts(14)="%p's confidence is adorable. Financially speaking."
      TargetTaunts(15)="Somebody get %p a tissue. And a new betting strategy."
+
+     FighterTaunts(0)="%a looks mean, but %b's got that look in their eyes."
+     FighterTaunts(1)="I've got $50 on %a. Don't let me down, big guy."
+     FighterTaunts(2)="Come on %a, show %b what you're made of!"
+     FighterTaunts(3)="%b's been pacing like they know something we don't."
+     FighterTaunts(4)="If %a wins this, I'm buying a round for the whole arena."
+     FighterTaunts(5)="%b doesn't look impressed. That's either brave or stupid."
+     FighterTaunts(6)="My money's on %a. That jaw can take a hit."
+     FighterTaunts(7)="%a vs %b - this is the fight of the century!"
+     FighterTaunts(8)="Someone tell %b this is a fight, not a stroll."
+     FighterTaunts(9)="%a's got reach, %b's got rage. Classic matchup."
+     FighterTaunts(10)="I'd hate to be in %a's corner right now... actually no, I'd love it."
+     FighterTaunts(11)="%b is about to learn why %a is undefeated at home."
+     FighterTaunts(12)="Look at %a warming up. That's a champion's walk."
+     FighterTaunts(13)="%b's entrance was weak. %a's was legendary."
+     FighterTaunts(14)="The bookies have %a as the favorite. Don't trust the bookies."
+     FighterTaunts(15)="If %a and %b don't tear each other apart, I want my money back."
 }

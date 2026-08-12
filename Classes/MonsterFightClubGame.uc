@@ -2422,6 +2422,14 @@ function MaybeTaunt(MonsterFightClubBot B)
         S = class'MonsterFightClubTaunts'.default.TargetTaunts[Rand(class'MonsterFightClubTaunts'.default.TargetTaunts.Length)];
         S = Repl(S, "%p", TargetPRI.PlayerName);
     }
+    else if (FRand() < 0.5 && FighterAName != "" && FighterBName != ""
+             && class'MonsterFightClubTaunts'.default.FighterTaunts.Length > 0)
+    {
+        // aimed at the CURRENT fighters - %a / %b become their names
+        S = class'MonsterFightClubTaunts'.default.FighterTaunts[Rand(class'MonsterFightClubTaunts'.default.FighterTaunts.Length)];
+        S = Repl(S, "%a", Caps(FighterAName));
+        S = Repl(S, "%b", Caps(FighterBName));
+    }
     else
         S = class'MonsterFightClubTaunts'.default.Taunts[Rand(class'MonsterFightClubTaunts'.default.Taunts.Length)];
 
