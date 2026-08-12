@@ -12,7 +12,12 @@
 //   RMB          close the menu
 //   Backslash    spectator cam <-> action cam
 //=============================================================================
-class MonsterFightClubPlayerController extends XPlayer;
+class MonsterFightClubPlayerController extends XPlayer
+    config(MonsterFightClubV1);   // explicit config file: read/write our own
+                                  // vars from MonsterFightClubV1.ini (the
+                                  // inherited config(user) from PlayerController
+                                  // makes subclass config vars unreliable on
+                                  // dedicated servers - they never applied)
 
 var() config bool bLogCamera;   // debug: log the camera state once per second
 var() config bool bLogInput;    // debug: log input/key events
@@ -30,6 +35,7 @@ var vector SmoothedMid;     // client-smoothed fight focus (kills 8Hz jumps)
 var bool bSmoothedMidValid;
 var int CamRigIndex;        // which broadcast rig is live (0 = main, 1 = corner A, 2 = corner B)
 var float CutClock;         // time until the next director's cut (8-14s)
+var float CutGlide;         // >0 while gliding to a fresh rig after a cut (0-1)
 var float BlockedTime;      // how long the current shot has been blocked by geometry
 var float CamOrbitAngle;    // persistent orbit phase - the rigs revolve around the fight
 var float ActionCamZoom;    // automatic broadcast zoom (0.5-3.0): pushes in on the
@@ -784,11 +790,23 @@ simulated function TrackFighters(float DeltaTime)
 
     if (bCutPending)
     {
-        // Hard TV cut: snap instantly to the new rig's position.
+        // A fast, smooth dolly to the new rig (NOT an instant teleport):
+        // a hard snap across the arena reads as visible jitter on the
+        // 64-bit preview client. The camera glides to the fresh position
+        // over ~1.5s - fast enough to feel like a decisive director's cut,
+        // smooth enough to never jar. The first move after the cut covers
+        // most of the distance immediately, then eases in.
         bCutPending = false;
-        NewLoc = TargetLoc;
+        CutGlide = 1.0;   // start the glide from the current position
+    }
+
+    if (CutGlide > 0)
+    {
+        // Gliding to a fresh rig: ease out of the old spot and into the
+        // new one. CutGlide 1.0 -> 0.0 over ~1.5s. Fast start, smooth end.
+        CutGlide -= DeltaTime * 0.66;
+        NewLoc = Location + (TargetLoc - Location) * FMin(1.0, (1.0 - CutGlide) * 6.0 * DeltaTime + 0.05);
         NewRot = rotator(Aim - NewLoc);
-        SetLocation(NewLoc);            // server-side only on cuts - see below
         SetRotation(NewRot);
         ClientSetLocation(NewLoc, NewRot);
     }
@@ -924,6 +942,7 @@ defaultproperties
      PlayerReplicationInfoClass=Class'MonsterFightClubV1.MonsterFightClubPRI'
      CamRigIndex=0
      CutClock=8.000000
+     CutGlide=0.000000
      bActionCam=False
      ActionCamZoom=1.200000
      ZoomTarget=1.200000

@@ -205,7 +205,11 @@ function PostBeginPlay()
         // unreliable (the 64-bit preview build).
         FCGRI.bCameraLog = class'MonsterFightClubPlayerController'.default.bLogCamera;
         FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
+        log("MonsterFightClub: GRI ready - pushing bCameraLog=" $ FCGRI.bCameraLog
+            $ " (PC default=" $ class'MonsterFightClubPlayerController'.default.bLogCamera $ ")", 'MonsterFightClubV1');
     }
+    else
+        log("MonsterFightClub: FCGRI is None at PostBeginPlay - cannot push bCameraLog", 'MonsterFightClubV1');
 
     // Dedicated show driver: ticks independently of the game state machine
     if (Role == ROLE_Authority)
