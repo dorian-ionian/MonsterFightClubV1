@@ -32,6 +32,7 @@ var int CamRigIndex;        // which broadcast rig is live (0 = main, 1 = corner
 var float CutClock;         // time until the next director's cut (8-14s)
 var float BlockedTime;      // how long the current shot has been blocked by geometry
 var float CamOrbitAngle;    // persistent orbit phase - the rigs revolve around the fight
+var float ActionCamZoom;    // action-cam rig distance multiplier (mouse wheel, 0.5-3.0)
 var bool bActionCam;        // true = boxing/action camera (rigs), false = stock spectator cam
 
 // Client state pushed from the server via RPCs (independent of GRI
@@ -427,8 +428,9 @@ simulated function HandleMenuKey(byte T)
 // Mouse wheel: with the betting menu open it cycles the amount; with the
 // menu CLOSED while the fighter cards are up it zooms the preview models
 // (same direction as the freecam: wheel UP = zoom OUT, wheel DOWN = zoom
-// IN). Everywhere else (fight in progress) it falls through to the stock
-// path, which zooms the spectator camera via CameraDist.
+// IN). In the action cam it zooms the broadcast rigs in/out on the
+// fighters. In the standard spectator cam it falls through to the stock
+// path (CameraDist).
 exec function NextWeapon()
 {
     if (bBetMenuOpen)
@@ -439,6 +441,11 @@ exec function NextWeapon()
     if (IsBettingOpenClient())
     {
         ZoomPreview(-1);   // wheel up = zoom out (matches freecam)
+        return;
+    }
+    if (bActionCam)
+    {
+        ZoomActionCam(1);  // wheel up = zoom out (pull the rigs back)
         return;
     }
     Super.NextWeapon();
@@ -456,7 +463,27 @@ exec function PrevWeapon()
         ZoomPreview(1);   // wheel down = zoom in (matches freecam)
         return;
     }
+    if (bActionCam)
+    {
+        ZoomActionCam(-1);  // wheel down = zoom in (push the rigs in)
+        return;
+    }
     Super.PrevWeapon();
+}
+
+// Wheel zoom for the action-cam broadcast rigs. The rig radius is scaled
+// so the camera dollies toward/away from the fighters - the custom camera
+// sets its own location every frame, so the stock CameraDist zoom would do
+// nothing here. Multiplicative (1.1 per notch) so the steps feel uniform
+// at every distance. Clamped 0.5x-3.0x of the default 320-unit radius.
+simulated function ZoomActionCam(int Dir)
+{
+    if (Dir > 0)
+        ActionCamZoom = FClamp(ActionCamZoom * 1.1, 0.5, 3.0);
+    else
+        ActionCamZoom = FClamp(ActionCamZoom * 0.9, 0.5, 3.0);
+    if (bLogInput)
+        log("MFC-INPUT: action cam zoom -> " $ ActionCamZoom, 'MonsterFightClubV1');
 }
 
 // True while the betting window is open (either the pushed client state
@@ -687,8 +714,9 @@ simulated function vector GetRigPosition(vector Mid)
     }
 
     Loc = Mid;
-    Loc.X += 320 * Cos(RigAngle);
-    Loc.Y += 320 * Sin(RigAngle);
+    // ActionCamZoom dollies the rigs in/out on the fighters (mouse wheel).
+    Loc.X += 320 * ActionCamZoom * Cos(RigAngle);
+    Loc.Y += 320 * ActionCamZoom * Sin(RigAngle);
     Loc.Z += 70;   // same height as the aim - perfectly parallel view
     return Loc;
 }
@@ -756,6 +784,7 @@ defaultproperties
      CamRigIndex=0
      CutClock=8.000000
      bActionCam=False
+     ActionCamZoom=1.000000
      PreviewZoom=1.000000
      bLogCamera=False
      bLogInput=False
