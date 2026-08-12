@@ -986,68 +986,73 @@ function BeginBettingPhase()
 // were wrong. The high-altitude probe FAILED to spawn these packs (their
 // spawn checks reject it), so the probe now uses the same PlayerStarts the
 // real fighters will use.
+// The card health comes from the REAL spawn whenever we've seen this
+// class fight before: SpawnFighters measures each fighter's actual spawn
+// health (same spawn path, same mutators active) and remembers it. A
+// fresh probe can disagree with the real fighter when a pack randomizes
+// its health or initializes it from fight context, so the cache takes
+// priority and the probe only fills in for classes never fought this
+// server session.
 function ProbeFighterHealths()
 {
-    local Monster P;
     local int i, iA, iB;
     local int Health;
 
     if (FCGRI == None)
         return;
 
-    // Use the same duel starts the real fighters will spawn on, with a
-    // retry across ALL spots (the probe spawn is flaky - sometimes the
-    // first spot fails but a later one works).
+    // Cache-first: the last REAL fighter of this class is the closest
+    // measurement to what the next one will spawn with.
+    ProbeHealthA = GetCachedHealth(FighterAClass);
+    ProbeHealthB = GetCachedHealth(FighterBClass);
+
+    // No learned value yet - probe a spawned copy at the same duel starts
+    // the real fighters will use (retry across all spots; the probe spawn
+    // is flaky for some packs). Probe results are remembered too, so a
+    // repeat booking skips the probe entirely.
     if (GetDuelStarts(iA, iB))
     {
-        if (FighterAClass != None)
+        if (FighterAClass != None && ProbeHealthA <= 0)
         {
             Health = ProbeWithRetry(FighterAClass, iA);
             if (Health > 0)
             {
                 ProbeHealthA = Health;
-                FCGRI.FighterAMaxHealth = Health;
-                FCGRI.FighterAHealth = Health;
-                FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
-                log("MFC-PROBE: " $ FighterAClass $ " defaultHealth=" $ FighterAClass.default.Health
-                    $ " probeHealth=" $ Health, 'MonsterFightClubV1');
+                RememberHealth(FighterAClass, Health);
+                if (default.bLogProbe)
+                    log("MFC-PROBE: " $ FighterAClass $ " defaultHealth=" $ FighterAClass.default.Health
+                        $ " probeHealth=" $ Health, 'MonsterFightClubV1');
             }
         }
-        if (FighterBClass != None)
+        if (FighterBClass != None && ProbeHealthB <= 0)
         {
             Health = ProbeWithRetry(FighterBClass, iB);
             if (Health > 0)
             {
                 ProbeHealthB = Health;
-                FCGRI.FighterBMaxHealth = Health;
-                FCGRI.FighterBHealth = Health;
-                FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
+                RememberHealth(FighterBClass, Health);
                 if (default.bLogProbe)
                     log("MFC-PROBE: " $ FighterBClass $ " defaultHealth=" $ FighterBClass.default.Health
-                        $ " probeHealth=" $ Health, 'MonsterFightClubV1');            }
+                        $ " probeHealth=" $ Health, 'MonsterFightClubV1');
+            }
         }
     }
 
-    // LEARNED cache: if a real fighter with this class has fought before,
-    // its real spawn health is the most reliable value (the probe can fail
-    // for packs whose spawn requires fight context - Dinotopia). The cache
-    // is populated in SpawnFighters.
-    if (ProbeHealthA <= 0)
-    {
-        ProbeHealthA = GetCachedHealth(FighterAClass);
-        if (ProbeHealthA <= 0)
-            ProbeHealthA = FighterAClass.default.Health;
-    }
-    if (ProbeHealthB <= 0)
-    {
-        ProbeHealthB = GetCachedHealth(FighterBClass);
-        if (ProbeHealthB <= 0)
-            ProbeHealthB = FighterBClass.default.Health;
-    }
-    if (FCGRI.FighterAMaxHealth <= 0)
-        FCGRI.FighterAMaxHealth = ProbeHealthA;
-    if (FCGRI.FighterBMaxHealth <= 0)
-        FCGRI.FighterBMaxHealth = ProbeHealthB;
+    // Last resort: the class default (most packs override this in their
+    // own config ini, so this is the least reliable source).
+    if (FighterAClass != None && ProbeHealthA <= 0)
+        ProbeHealthA = FighterAClass.default.Health;
+    if (FighterBClass != None && ProbeHealthB <= 0)
+        ProbeHealthB = FighterBClass.default.Health;
+
+    // ALWAYS publish the resolved values - the GRI can otherwise hold a
+    // stale max-health from the previous matchup's class, which is what
+    // made the card show the wrong number "sometimes".
+    FCGRI.FighterAMaxHealth = ProbeHealthA;
+    FCGRI.FighterAHealth = ProbeHealthA;
+    FCGRI.FighterBMaxHealth = ProbeHealthB;
+    FCGRI.FighterBHealth = ProbeHealthB;
+    FCGRI.NetUpdateTime = Level.TimeSeconds - 1;
 }
 
 // Try to spawn the probe at the given spot, falling back to every other
