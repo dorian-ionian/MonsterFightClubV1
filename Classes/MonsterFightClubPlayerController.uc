@@ -491,11 +491,15 @@ simulated function HandleMenuKey(byte T)
 }
 
 // Mouse wheel: with the betting menu open it cycles the amount; with the
+// Mouse wheel: with the betting menu open it cycles the amount; with the
 // menu CLOSED while the fighter cards are up it zooms the preview models
 // (same direction as the freecam: wheel UP = zoom OUT, wheel DOWN = zoom
-// IN). In the action cam it zooms the broadcast rigs in/out on the
-// fighters. In the standard spectator cam it falls through to the stock
-// path (CameraDist).
+// IN). In the action cam the zoom is AUTOMATIC (TV broadcast style) - the
+// wheel does nothing there. In the STANDARD spectator cam the wheel zooms
+// the chase camera directly via CameraDist (the stock path's
+// bBehindView/Pawn gates can silently fail on the 64-bit preview client,
+// leaving the wheel dead - this bypasses them; in freecam CameraDist is
+// unused, so nothing happens there, exactly like stock).
 exec function NextWeapon()
 {
     if (bBetMenuOpen)
@@ -508,9 +512,15 @@ exec function NextWeapon()
         ZoomPreview(-1);   // wheel up = zoom out (matches freecam)
         return;
     }
-    // In the action cam the zoom is AUTOMATIC (TV broadcast style) - the
-    // wheel does nothing there. Standard spectator cam falls through to
-    // the stock path (CameraDist).
+    if (!bActionCam)
+    {
+        // standard spectator cam: direct chase-cam zoom (wheel up = out)
+        CameraDist = FMin(CameraDistRange.Max, CameraDist + 1.0);
+        if (bLogInput)
+            log("MFC-INPUT: wheel up - CameraDist=" $ CameraDist
+                $ " behind=" $ bBehindView $ " pawn=" $ (Pawn != None), 'MonsterFightClubV1');
+        return;
+    }
     Super.NextWeapon();
 }
 
@@ -524,6 +534,15 @@ exec function PrevWeapon()
     if (IsBettingOpenClient())
     {
         ZoomPreview(1);   // wheel down = zoom in (matches freecam)
+        return;
+    }
+    if (!bActionCam)
+    {
+        // standard spectator cam: direct chase-cam zoom (wheel down = in)
+        CameraDist = FMax(CameraDistRange.Min, CameraDist - 1.0);
+        if (bLogInput)
+            log("MFC-INPUT: wheel down - CameraDist=" $ CameraDist
+                $ " behind=" $ bBehindView $ " pawn=" $ (Pawn != None), 'MonsterFightClubV1');
         return;
     }
     Super.PrevWeapon();
