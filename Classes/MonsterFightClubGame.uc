@@ -1507,37 +1507,68 @@ function Monster TrySpawnFighter(class<Monster> MClass, int SpotIndex)
     return Spawn(MClass,,, StartSpots[SpotIndex].Location, StartSpots[SpotIndex].Rotation);
 }
 
-// Pick two player starts for the duel. The pair must be NO MORE than 1024
-// units apart; among qualifying pairs the one closest to 1024 wins (close
-// enough to be dramatic, far enough that they aren't on top of each other).
-// If every pair on the map exceeds 1024, the CLOSEST pair is used so the
-// fighters still start within reach of each other.
+// Pick two player starts for the duel. Any pair NO MORE than 1024 units
+// apart qualifies (close enough to be dramatic, far enough that they
+// aren't on top of each other); ONE qualifying pair is picked at RANDOM
+// every call so the fight isn't glued to the same two starts on every
+// round of the show. If no pair on the map qualifies, the CLOSEST pair is
+// used so the fighters still start within reach of each other.
 function bool GetDuelStarts(out int iA, out int iB)
 {
-    local int i, j, besti, bestj;
+    local int i, j, besti, bestj, n, pick;
     local float d, bestScore, score;
 
     if (StartSpots.Length < 2)
         return false;
 
+    // Count qualifying pairs (distance <= 1024), remembering the closest
+    // pair as the fallback.
     besti = 0;
     bestj = 1;
     bestScore = 100000000.0;
+    n = 0;
     for (i = 0; i < StartSpots.Length; i++)
         for (j = i + 1; j < StartSpots.Length; j++)
         {
             d = VSize(StartSpots[i].Location - StartSpots[j].Location);
             if (d <= 1024.0)
-                score = Abs(d - 1024.0);   // prefer pairs closest to 1024
-            else
-                score = 100000.0 + d;      // too far - only used if nothing qualifies
-            if (score < bestScore)
+                n++;
+            if (d < bestScore)
             {
-                bestScore = score;
+                bestScore = d;
                 besti = i;
                 bestj = j;
             }
         }
+
+    if (n == 0)
+    {
+        // nothing within range - use the closest pair
+        iA = besti;
+        iB = bestj;
+        return true;
+    }
+
+    // Pick a random qualifying pair: walk the pairs again and take the
+    // Nth one (0-based) that qualifies.
+    pick = Rand(n);
+    n = 0;
+    for (i = 0; i < StartSpots.Length; i++)
+        for (j = i + 1; j < StartSpots.Length; j++)
+        {
+            d = VSize(StartSpots[i].Location - StartSpots[j].Location);
+            if (d > 1024.0)
+                continue;
+            if (n == pick)
+            {
+                iA = i;
+                iB = j;
+                return true;
+            }
+            n++;
+        }
+
+    // Shouldn't get here - fall back to the closest pair.
     iA = besti;
     iB = bestj;
     return true;
